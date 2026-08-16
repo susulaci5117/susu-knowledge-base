@@ -705,13 +705,6 @@
                     <span class="breadcrumb-item current">根目录</span>
                 </div>
 
-                <!-- 拖拽上传区 -->
-                <div class="upload-area" id="uploadArea">
-                    <div class="upload-icon">📁</div>
-                    <div class="upload-text">拖拽文件到这里上传</div>
-                    <div class="upload-hint">支持 TXT、MD、PDF、DOCX、PPTX、XLSX 等格式</div>
-                </div>
-
                 <!-- 文件列表 -->
                 <div class="file-list" id="fileList">
                     <!-- 文件列表动态生成 -->
@@ -1018,15 +1011,14 @@ function renderBreadcrumb() {
 
 function renderFileList() {
   const fileList = document.getElementById('fileList');
-  const uploadArea = document.getElementById('uploadArea');
 
   if (state.currentTab === 'files') {
-    uploadArea.style.display = 'block';
+
     const folders = getViewFolders();
     const files = getViewFiles();
 
     if (folders.length === 0 && files.length === 0) {
-      fileList.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">还没有文件，拖拽或点击上传吧</div></div>';
+      fileList.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">还没有文件，点右上角"+添加内容"上传吧</div></div>';
       return;
     }
 
@@ -1059,10 +1051,10 @@ function renderFileList() {
 
     fileList.innerHTML = html;
   } else {
-    uploadArea.style.display = 'none';
+
     const links = getViewLinks();
     if (links.length === 0) {
-      fileList.innerHTML = '<div class="empty-state"><div class="empty-icon">🔗</div><div class="empty-text">还没有网址，点击"添加内容"添加吧</div></div>';
+      fileList.innerHTML = '<div class="empty-state"><div class="empty-icon">🔗</div><div class="empty-text">还没有网址，点右上角"+添加内容"添加吧</div></div>';
       return;
     }
     fileList.innerHTML = links.map(link => {
@@ -1633,9 +1625,7 @@ async function moveFile() {
 function handleSearch() {
   const keyword = document.getElementById('searchInput').value.trim().toLowerCase();
   const fileList = document.getElementById('fileList');
-  const uploadArea = document.getElementById('uploadArea');
-
-  if (!keyword) { render(); return; }
+    if (!keyword) { render(); return; }
 
   let results = [];
   state.items.forEach(it => {
@@ -1646,7 +1636,6 @@ function handleSearch() {
     }
   });
 
-  uploadArea.style.display = 'none';
   if (results.length === 0) {
     fileList.innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-text">没有匹配结果</div></div>';
     return;
@@ -1725,18 +1714,7 @@ async function reloadAll() {
 }
 
 // ---------- 事件绑定 ----------
-const uploadArea = document.getElementById('uploadArea');
-if (uploadArea) {
-  uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); });
-  uploadArea.addEventListener('dragleave', () => { uploadArea.classList.remove('dragover'); });
-  uploadArea.addEventListener('drop', (e) => {
-    e.preventDefault();
-    uploadArea.classList.remove('dragover');
-    const files = e.dataTransfer.files;
-    if (files.length > 0) addFiles(files);
-  });
-  uploadArea.addEventListener('click', () => { document.getElementById('fileInput').click(); });
-}
+
 
 document.addEventListener('click', (e) => {
   if (!e.target.closest('.context-menu')) {
