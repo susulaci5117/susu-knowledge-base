@@ -803,7 +803,7 @@
     <div class="modal-overlay" id="renameModal">
         <div class="modal">
             <div class="modal-header">
-                <div class="modal-title">重命名</div>
+                <div class="modal-title" id="renameModalTitle">重命名</div>
                 <button class="modal-close" onclick="closeModal('renameModal')">×</button>
             </div>
             <div class="modal-body">
@@ -816,6 +816,16 @@
                 <button class="btn btn-secondary" onclick="closeModal('renameModal')">取消</button>
                 <button class="btn btn-primary" onclick="renameItem()">确定</button>
             </div>
+        </div>
+    </div>
+
+    <!-- 知识库右键菜单 -->
+    <div class="context-menu" id="kbContextMenu">
+        <div class="context-menu-item" onclick="showRenameKnowledgeModal()">
+            <span>✏️</span> 重命名
+        </div>
+        <div class="context-menu-item danger" onclick="deleteKnowledge()">
+            <span>🗑️</span> 删除
         </div>
     </div>
 
@@ -990,13 +1000,40 @@ function renderKnowledgeList() {
   const list = document.getElementById('knowledgeList');
   list.innerHTML = state.knowledgeBases.map(kb => {
     const active = kb.id === state.currentKbId ? 'active' : '';
-    return '<div class="knowledge-item ' + active + '" onclick="switchKnowledge(\'' + kb.id + '\')">' +
+    return '<div class="knowledge-item ' + active + '" onclick="switchKnowledge(\'' + kb.id + '\')" oncontextmenu="showKbContextMenu(event,\'' + kb.id + '\')">' +
       '<span class="icon">📚</span>' +
       '<span class="name">' + escapeHtml(kb.name) + '</span>' +
       '<span class="count">' + getKbCount(kb.id) + '</span>' +
       '</div>';
   }).join('');
 }
+
+// 显示知识库右键菜单
+function showKbContextMenu(event, kbId) {
+  event.preventDefault();
+  event.stopPropagation();
+  currentKbOperation = kbId;
+  const menu = document.getElementById('kbContextMenu');
+  menu.style.top = event.clientY + 'px';
+  menu.style.left = event.clientX + 'px';
+  menu.classList.add('show');
+  setTimeout(() => document.addEventListener('click', hideKbContextMenu, { once: true }), 0);
+}
+
+function hideKbContextMenu() {
+  document.getElementById('kbContextMenu').classList.remove('show');
+}
+
+// 打开重命名知识库弹窗
+function showRenameKnowledgeModal() {
+  const kb = state.knowledgeBases.find(k => k.id === currentKbOperation);
+  if (!kb) return;
+  currentOperation = { type: 'kb', id: currentKbOperation };
+  document.getElementById('renameInput').value = kb.name || '';
+  document.getElementById('renameModalTitle').textContent = '重命名知识库';
+  showModal('renameModal');
+}
+
 
 function renderBreadcrumb() {
   const breadcrumb = document.getElementById('breadcrumb');
@@ -1120,6 +1157,55 @@ function openFile(fileId) {
 }
 
 // ---------- 新建知识库 ----------
+async function renameKnowledge() {
+  const newName = document.getElementById('renameInput').value.trim();
+  if (!newName) { showToast('请输入知识库名称', 'error'); return; }
+  if (!currentKbOperation) return;
+
+  const { error } = await sbClient
+    .from('knowledge_bases')
+    .update({ name: newName })
+    .eq('id', currentKbOperation);
+  if (error) { showToast('重命名失败: ' + error.message, 'error'); return; }
+
+  await reloadAll();
+  closeModal('renameModal');
+  render();
+  showToast('知识库重命名成功', 'success');
+}
+
+async function deleteKnowledge() {
+  const kbName = state.knowledgeBases.find(k => k.id === currentKbOperation);
+  if (!confirm('确定要删除知识库"' + (kbName ? kbName.name : '') + '"吗？\n该知识库下的所有文件夹和文件都会被删除，且不可恢复！')) return;
+  if (!currentKbOperation) return;
+  const kbId = currentKbOperation;
+
+  // 1. 找到该知识库所有文件夹
+  const allFolderIds = [];
+  state.folders.forEach(f => { if (f.kb_id === kbId) allFolderIds.push(f.id); });
+
+  // 2. 删除该知识库下所有 items（包括无文件夹的）
+  await sbClient.from('items').delete().eq('kb_id', kbId);
+  // 删除该知识库下所有文件夹
+  if (allFolderIds.length > 0) {
+    await sbClient.from('folders').delete().in('id', allFolderIds);
+  }
+
+  // 3. 删除知识库本身
+  const { error } = await sbClient.from('knowledge_bases').delete().eq('id', kbId);
+  if (error) { showToast('删除失败: ' + error.message, 'error'); return; }
+
+  hideKbContextMenu();
+  await reloadAll();
+  // 如果删除的是当前选中的知识库，切到第一个
+  if (state.currentKbId === kbId) {
+    state.currentKbId = state.knowledgeBases.length > 0 ? state.knowledgeBases[0].id : null;
+    state.currentPath = [];
+  }
+  render();
+  showToast('知识库已删除', 'success');
+}
+
 function showAddKnowledgeModal() {
   document.getElementById('knowledgeNameInput').value = '';
   showModal('addKnowledgeModal');
@@ -1419,6 +1505,8 @@ async function addFolder() {
 }
 
 // ---------- 操作状态 ----------
+let currentKbOperation = null;
+
 let currentOperation = {
   type: null,
   id: null,
@@ -1466,7 +1554,9 @@ async function renameItem() {
   if (!newName) { showToast('请输入名称', 'error'); return; }
 
   const { type, id } = currentOperation;
-  const table = type === 'folder' ? 'folders' : 'items';
+  let table = 'items';
+  if (type === 'folder') table = 'folders';
+  else if (type === 'kb') table = 'knowledge_bases';
   const { error } = await sbClient
     .from(table)
     .update({ name: newName })
@@ -1490,6 +1580,14 @@ function deleteItemDirect(type, id) {
 async function deleteItem() {
   if (!confirm('确定要删除吗？')) return;
   const { type, id } = currentOperation;
+
+  if (type === 'kb') {
+    // 删除知识库及所有内容
+    currentKbOperation = id;
+    hideKbContextMenu();
+    await deleteKnowledge();
+    return;
+  }
 
   if (type === 'folder') {
     // 删除文件夹及其所有子文件夹、内容
