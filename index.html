@@ -1198,7 +1198,12 @@ function handleFileSelect(event) {
 }
 function handleFolderSelect(event) {
   const files = event.target.files;
-  addFiles(files);
+  if (files.length > 0 && files[0].webkitRelativePath) {
+    // 是文件夹上传：保留目录层级
+    addFolderTree(files);
+  } else {
+    addFiles(files);
+  }
   event.target.value = '';
 }
 
@@ -1243,6 +1248,122 @@ async function addFiles(fileList) {
   render();
   if (fail === 0) showToast('已添加 ' + ok + ' 个文件', 'success');
   else showToast('添加 ' + ok + ' 个，失败 ' + fail + ' 个', 'error');
+}
+
+// ---------- 文件夹树上传（保留层级结构） ----------
+async function addFolderTree(fileList) {
+  if (!fileList || fileList.length === 0) return;
+  const files = Array.from(fileList);
+  const kbId = state.currentKbId;
+  let ok = 0, fail = 0;
+  showToast('正在上传文件夹...', '');
+
+  // 用 Map 缓存 (父id + "|" + 文件夹名) -> 文件夹id，避免重复创建
+  // 通过路径来复用：路径作为 key
+  const folderCache = new Map(); // key: 路径 => folderId
+
+  // 关键：由于是文件夹上传，目标根目录是当前所在文件夹
+  const rootFolderId = getCurrentFolderId();
+
+  // 遍历所有文件
+  for (const file of files) {
+    // webkitRelativePath 形如: "文件夹名/子文件夹/文件名.pdf"
+    const relPath = file.webkitRelativePath;
+    if (!relPath) {
+      // 没有相对路径，当作普通文件上传到当前目录
+      await uploadOneFile(file, kbId, rootFolderId, (r) => { if (r) ok++; else fail++; });
+      continue;
+    }
+
+    const parts = relPath.split('/');
+    // 文件名是最后一段
+    const fileName = parts.pop();
+
+    // 跳过空目录（没有文件）
+    if (parts.length === 0) {
+      await uploadOneFile(file, kbId, rootFolderId, (r) => { if (r) ok++; else fail++; });
+      continue;
+    }
+
+    // 逐级创建/查找文件夹，parts[0..] 就是文件夹层级
+    let parentId = rootFolderId;
+    let pathKey = '';
+    let hierarchyOk = true;
+
+    for (const folderName of parts) {
+      if (pathKey) pathKey += '/';
+      pathKey += folderName;
+      const cacheKey = parentId + '|' + folderName;
+
+      let folderId = folderCache.get(cacheKey);
+      if (folderId === undefined) {
+        // 在数据库查找该文件夹
+        const { data: exists, error: exErr } = await sbClient
+          .from('folders')
+          .select('id')
+          .eq('kb_id', kbId)
+          .eq('parent_id', parentId)
+          .eq('name', folderName)
+          .maybeSingle();
+        if (!exErr && exists) {
+          folderId = exists.id;
+        } else {
+          // 创建新文件夹
+          const { data: created, error: crErr } = await sbClient
+            .from('folders')
+            .insert({ kb_id: kbId, name: folderName, parent_id: parentId })
+            .select()
+            .single();
+          if (crErr) { hierarchyOk = false; break; }
+          folderId = created.id;
+          // 同步到本地 state，方便后续渲染
+          state.folders.set(created.id, created);
+        }
+        folderCache.set(cacheKey, folderId);
+      }
+      parentId = folderId;
+    }
+
+    if (!hierarchyOk) { fail++; console.error('创建文件夹失败:', relPath); continue; }
+
+    // 文件上传到最终文件夹
+    await uploadOneFile(file, kbId, parentId, (r) => { if (r) ok++; else fail++; });
+  }
+
+  await reloadItems();
+  await reloadFolders();
+  render();
+  if (fail === 0) showToast('已添加 ' + ok + ' 个文件到文件夹', 'success');
+  else showToast('添加 ' + ok + ' 个，失败 ' + fail + ' 个', 'error');
+}
+
+// 上传单个文件到指定文件夹
+async function uploadOneFile(file, kbId, folderId, callback) {
+  const storagePath = 'files/' + Date.now() + '_' + Math.random().toString(36).substr(2, 6) + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const { error: upErr } = await sbClient.storage
+    .from('kb-files')
+    .upload(storagePath, file, { contentType: file.type || 'application/octet-stream' });
+  if (upErr) { console.error('上传失败', file.name, upErr.message); callback(false); return; }
+
+  const { data: urlData } = sbClient.storage.from('kb-files').getPublicUrl(storagePath);
+  const { error: insErr } = await sbClient
+    .from('items')
+    .insert({
+      kb_id: kbId,
+      folder_id: folderId,
+      name: file.name,
+      type: 'file',
+      url: urlData.publicUrl,
+      file_size: file.size
+    });
+  if (insErr) { console.error('记录失败', file.name, insErr.message); callback(false); }
+  else callback(true);
+}
+
+// 重新加载文件夹
+async function reloadFolders() {
+  const { data, error } = await sbClient.from('folders').select('*');
+  if (!error && data) state.folders = new Map(data.map(f => [f.id, f]));
 }
 
 // ---------- 添加网址 ----------
