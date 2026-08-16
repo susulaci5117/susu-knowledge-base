@@ -1,0 +1,1756 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>素素的知识库</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: #f5f7fa;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* 左侧边栏 */
+        .sidebar {
+            width: 280px;
+            background: #fff;
+            border-right: 1px solid #e8e8e8;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #e8e8e8;
+        }
+
+        .sidebar-header h1 {
+            font-size: 18px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sidebar-header h1::before {
+            content: '📚';
+        }
+
+        .knowledge-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        .knowledge-item {
+            padding: 12px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 4px;
+            transition: all 0.2s;
+        }
+
+        .knowledge-item:hover {
+            background: #f5f7fa;
+        }
+
+        .knowledge-item.active {
+            background: #e8f4ff;
+            color: #1677ff;
+        }
+
+        .knowledge-item .icon {
+            font-size: 18px;
+        }
+
+        .knowledge-item .name {
+            flex: 1;
+            font-size: 14px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .knowledge-item .count {
+            font-size: 12px;
+            color: #999;
+            background: #f0f0f0;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        .knowledge-item.active .count {
+            background: #1677ff;
+            color: #fff;
+        }
+
+        .sidebar-footer {
+            padding: 16px;
+            border-top: 1px solid #e8e8e8;
+        }
+
+        .btn-add-knowledge {
+            width: 100%;
+            padding: 10px;
+            background: #1677ff;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: background 0.2s;
+        }
+
+        .btn-add-knowledge:hover {
+            background: #0958d9;
+        }
+
+        /* 右侧主内容区 */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* 顶部栏 */
+        .top-bar {
+            padding: 16px 24px;
+            background: #fff;
+            border-bottom: 1px solid #e8e8e8;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .current-knowledge {
+            font-size: 16px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .top-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .search-box {
+            position: relative;
+        }
+
+        .search-box input {
+            padding: 8px 12px 8px 36px;
+            border: 1px solid #e8e8e8;
+            border-radius: 8px;
+            font-size: 14px;
+            width: 240px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-box input:focus {
+            border-color: #1677ff;
+        }
+
+        .search-box::before {
+            content: '🔍';
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 14px;
+        }
+
+        .btn-add-file {
+            padding: 8px 16px;
+            background: #52c41a;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.2s;
+        }
+
+        .btn-add-file:hover {
+            background: #389e0d;
+        }
+
+        /* 标签页 */
+        .tabs {
+            display: flex;
+            padding: 0 24px;
+            background: #fff;
+            border-bottom: 1px solid #e8e8e8;
+        }
+
+        .tab {
+            padding: 12px 20px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #666;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab:hover {
+            color: #333;
+        }
+
+        .tab.active {
+            color: #1677ff;
+            border-bottom-color: #1677ff;
+        }
+
+        .tab .tab-count {
+            margin-left: 4px;
+            font-size: 12px;
+            color: #999;
+        }
+
+        .tab.active .tab-count {
+            color: #1677ff;
+        }
+
+        /* 文件内容区 */
+        .file-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        /* 面包屑导航 */
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .breadcrumb-item {
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .breadcrumb-item:hover {
+            color: #1677ff;
+        }
+
+        .breadcrumb-item.current {
+            color: #333;
+            font-weight: 500;
+        }
+
+        .breadcrumb-separator {
+            color: #ccc;
+        }
+
+        /* 拖拽上传区 */
+        .upload-area {
+            border: 2px dashed #d9d9d9;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 24px;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .upload-area:hover,
+        .upload-area.dragover {
+            border-color: #1677ff;
+            background: #f0f7ff;
+        }
+
+        .upload-area .upload-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .upload-area .upload-text {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .upload-area .upload-hint {
+            font-size: 13px;
+            color: #999;
+        }
+
+        /* 文件列表 */
+        .file-list {
+            background: #fff;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 14px 20px;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background 0.2s;
+        }
+
+        .file-item:last-child {
+            border-bottom: none;
+        }
+
+        .file-item:hover {
+            background: #fafafa;
+        }
+
+        .file-item .file-icon {
+            font-size: 28px;
+            margin-right: 14px;
+        }
+
+        .file-item .file-info {
+            flex: 1;
+        }
+
+        .file-item .file-name {
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .file-item .file-meta {
+            font-size: 12px;
+            color: #999;
+            display: flex;
+            gap: 12px;
+        }
+
+        .file-item .file-actions {
+            display: flex;
+            gap: 8px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .file-item:hover .file-actions {
+            opacity: 1;
+        }
+
+        .file-action-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+
+        .file-action-btn.move {
+            background: #e6f7ff;
+            color: #1677ff;
+        }
+
+        .file-action-btn.move:hover {
+            background: #1677ff;
+            color: #fff;
+        }
+
+        .file-action-btn.rename {
+            background: #fff7e6;
+            color: #fa8c16;
+        }
+
+        .file-action-btn.rename:hover {
+            background: #fa8c16;
+            color: #fff;
+        }
+
+        .file-action-btn.delete {
+            background: #fff1f0;
+            color: #ff4d4f;
+        }
+
+        .file-action-btn.delete:hover {
+            background: #ff4d4f;
+            color: #fff;
+        }
+
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state .empty-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-state .empty-text {
+            font-size: 16px;
+        }
+
+        /* 弹窗 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s;
+        }
+
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            min-width: 400px;
+            max-width: 500px;
+            transform: scale(0.9);
+            transition: transform 0.2s;
+        }
+
+        .modal-overlay.show .modal {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 20px;
+            color: #999;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .modal-close:hover {
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .modal-body {
+            margin-bottom: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #e8e8e8;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-input:focus {
+            border-color: #1677ff;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #1677ff;
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: #0958d9;
+        }
+
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e8e8e8;
+        }
+
+        /* 文件夹选择列表 */
+        .folder-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #e8e8e8;
+            border-radius: 8px;
+        }
+
+        .folder-item {
+            padding: 10px 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.2s;
+        }
+
+        .folder-item:hover {
+            background: #f5f7fa;
+        }
+
+        .folder-item.selected {
+            background: #e8f4ff;
+            color: #1677ff;
+        }
+
+        .folder-item.folder-child {
+            padding-left: 40px;
+        }
+
+        /* Toast 提示 */
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: #333;
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 2000;
+            transition: transform 0.3s;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .toast.success {
+            background: #52c41a;
+        }
+
+        .toast.error {
+            background: #ff4d4f;
+        }
+
+        /* 右键菜单 */
+        .context-menu {
+            position: fixed;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            padding: 6px;
+            min-width: 160px;
+            z-index: 1500;
+            display: none;
+            top: -9999px;
+            left: -9999px;
+        }
+
+        .context-menu.show {
+            display: block;
+        }
+
+        .context-menu-item {
+            padding: 10px 14px;
+            cursor: pointer;
+            font-size: 14px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: background 0.2s;
+        }
+
+        .context-menu-item:hover {
+            background: #f5f7fa;
+        }
+
+        .context-menu-item.danger {
+            color: #ff4d4f;
+        }
+
+        .context-menu-item.danger:hover {
+            background: #fff1f0;
+        }
+
+        /* 隐藏文件输入 */
+        #fileInput, #folderInput {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 左侧边栏 -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>素素的知识库</h1>
+            </div>
+            <div class="knowledge-list" id="knowledgeList">
+                <!-- 知识库列表动态生成 -->
+            </div>
+            <div class="sidebar-footer">
+                <button class="btn-add-knowledge" onclick="showAddKnowledgeModal()">
+                    <span>+</span> 新建知识库
+                </button>
+            </div>
+        </aside>
+
+        <!-- 右侧主内容区 -->
+        <main class="main-content">
+            <!-- 顶部栏 -->
+            <div class="top-bar">
+                <div class="current-knowledge" id="currentKnowledge">默认知识库</div>
+                <div class="top-actions">
+                    <div class="search-box">
+                        <input type="text" placeholder="搜索文件..." id="searchInput" oninput="handleSearch()">
+                    </div>
+                    <button class="btn-add-file" onclick="showAddFileMenu(event)">
+                        <span>+</span> 添加内容
+                    </button>
+                </div>
+            </div>
+
+            <!-- 标签页 -->
+            <div class="tabs">
+                <div class="tab active" data-tab="files" onclick="switchTab('files')">
+                    文件 <span class="tab-count" id="fileCount">0</span>
+                </div>
+                <div class="tab" data-tab="links" onclick="switchTab('links')">
+                    网址 <span class="tab-count" id="linkCount">0</span>
+                </div>
+            </div>
+
+            <!-- 文件内容区 -->
+            <div class="file-content">
+                <!-- 面包屑导航 -->
+                <div class="breadcrumb" id="breadcrumb">
+                    <span class="breadcrumb-item current">根目录</span>
+                </div>
+
+                <!-- 拖拽上传区 -->
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">拖拽文件到这里上传</div>
+                    <div class="upload-hint">支持 TXT、MD、PDF、DOCX、PPTX、XLSX 等格式</div>
+                </div>
+
+                <!-- 文件列表 -->
+                <div class="file-list" id="fileList">
+                    <!-- 文件列表动态生成 -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 新建知识库弹窗 -->
+    <div class="modal-overlay" id="addKnowledgeModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">新建知识库</div>
+                <button class="modal-close" onclick="closeModal('addKnowledgeModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">知识库名称</label>
+                    <input type="text" class="form-input" id="knowledgeNameInput" placeholder="请输入知识库名称">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('addKnowledgeModal')">取消</button>
+                <button class="btn btn-primary" onclick="addKnowledge()">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加网址弹窗 -->
+    <div class="modal-overlay" id="addLinkModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">添加网址</div>
+                <button class="modal-close" onclick="closeModal('addLinkModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">网址链接</label>
+                    <input type="text" class="form-input" id="linkUrlInput" placeholder="https://example.com">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">网址名称（可选）</label>
+                    <input type="text" class="form-input" id="linkNameInput" placeholder="给网址起个名字">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('addLinkModal')">取消</button>
+                <button class="btn btn-primary" onclick="addLink()">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新建文件夹弹窗 -->
+    <div class="modal-overlay" id="addFolderModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">新建文件夹</div>
+                <button class="modal-close" onclick="closeModal('addFolderModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">文件夹名称</label>
+                    <input type="text" class="form-input" id="folderNameInput" placeholder="请输入文件夹名称">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('addFolderModal')">取消</button>
+                <button class="btn btn-primary" onclick="addFolder()">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 移动文件弹窗 -->
+    <div class="modal-overlay" id="moveFileModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">移动文件</div>
+                <button class="modal-close" onclick="closeModal('moveFileModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">选择目标文件夹</label>
+                    <div class="folder-list" id="folderSelectList">
+                        <!-- 文件夹列表动态生成 -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('moveFileModal')">取消</button>
+                <button class="btn btn-primary" onclick="moveFile()">移动</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 重命名弹窗 -->
+    <div class="modal-overlay" id="renameModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">重命名</div>
+                <button class="modal-close" onclick="closeModal('renameModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">新名称</label>
+                    <input type="text" class="form-input" id="renameInput" placeholder="请输入新名称">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('renameModal')">取消</button>
+                <button class="btn btn-primary" onclick="renameItem()">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加内容菜单 -->
+    <div class="context-menu" id="addFileMenu">
+        <div class="context-menu-item" onclick="triggerFileUpload()">
+            <span>📄</span> 上传文件
+        </div>
+        <div class="context-menu-item" onclick="triggerFolderUpload()">
+            <span>📁</span> 上传文件夹
+        </div>
+        <div class="context-menu-item" onclick="showAddLinkModal()">
+            <span>🔗</span> 添加网址
+        </div>
+        <div class="context-menu-item" onclick="showAddFolderModal()">
+            <span>📂</span> 新建文件夹
+        </div>
+    </div>
+
+    <!-- 文件右键菜单 -->
+    <div class="context-menu" id="fileContextMenu">
+        <div class="context-menu-item" onclick="renameItem()">
+            <span>✏️</span> 重命名
+        </div>
+        <div class="context-menu-item" onclick="showMoveModal()">
+            <span>📦</span> 移动到...
+        </div>
+        <div class="context-menu-item danger" onclick="deleteItem()">
+            <span>🗑️</span> 删除
+        </div>
+    </div>
+
+    <!-- Toast 提示 -->
+    <div class="toast" id="toast"></div>
+
+    <!-- 隐藏的文件输入 -->
+    <input type="file" id="fileInput" multiple onchange="handleFileSelect(event)">
+    <input type="file" id="folderInput" webkitdirectory multiple onchange="handleFolderSelect(event)">
+
+    <script>
+        // 数据存储
+        let data = {
+            knowledgeBases: [
+                { id: 'default', name: '默认知识库', files: [], links: [], folders: [] }
+            ],
+            currentKnowledgeId: 'default',
+            currentPath: [], // 当前路径，如 ['文件夹1', '子文件夹']
+            currentTab: 'files'
+        };
+
+        // 从 localStorage 加载数据
+        function loadData() {
+            const saved = localStorage.getItem('susuKnowledgeBase');
+            if (saved) {
+                data = JSON.parse(saved);
+            }
+            // 数据兼容性修复：确保每个知识库都有 folders 和 links 数组
+            data.knowledgeBases.forEach(kb => {
+                if (!kb.folders) kb.folders = [];
+                if (!kb.links) kb.links = [];
+                if (!kb.files) kb.files = [];
+            });
+            saveData(); // 保存修复后的数据
+            render();
+        }
+
+        // 保存数据到 localStorage
+        function saveData() {
+            localStorage.setItem('susuKnowledgeBase', JSON.stringify(data));
+        }
+
+        // 获取当前知识库
+        function getCurrentKnowledge() {
+            return data.knowledgeBases.find(kb => kb.id === data.currentKnowledgeId);
+        }
+
+        // 获取当前文件夹中的文件
+        function getCurrentFiles() {
+            const kb = getCurrentKnowledge();
+            if (!kb) return [];
+            
+            let files = kb.files || [];
+            let folders = kb.folders || [];
+            
+            // 根据当前路径过滤
+            for (const pathItem of data.currentPath) {
+                files = files.filter(f => f.parentFolder === pathItem.id);
+                folders = folders.filter(f => f.parentFolder === pathItem.id);
+            }
+            
+            // 如果是根目录，显示没有 parentFolder 的文件
+            if (data.currentPath.length === 0) {
+                files = (kb.files || []).filter(f => !f.parentFolder);
+                folders = (kb.folders || []).filter(f => !f.parentFolder);
+            }
+            
+            return { files, folders };
+        }
+
+        // 获取当前知识库的网址
+        function getCurrentLinks() {
+            const kb = getCurrentKnowledge();
+            if (!kb) return [];
+            return kb.links || [];
+        }
+
+        // 渲染界面
+        function render() {
+            renderKnowledgeList();
+            renderBreadcrumb();
+            renderFileList();
+            updateCounts();
+            updateCurrentKnowledgeName();
+        }
+
+        // 渲染知识库列表
+        function renderKnowledgeList() {
+            const list = document.getElementById('knowledgeList');
+            list.innerHTML = data.knowledgeBases.map(kb => `
+                <div class="knowledge-item ${kb.id === data.currentKnowledgeId ? 'active' : ''}" 
+                     onclick="switchKnowledge('${kb.id}')">
+                    <span class="icon">📚</span>
+                    <span class="name">${kb.name}</span>
+                    <span class="count">${(kb.files?.length || 0) + (kb.links?.length || 0)}</span>
+                </div>
+            `).join('');
+        }
+
+        // 渲染面包屑导航
+        function renderBreadcrumb() {
+            const breadcrumb = document.getElementById('breadcrumb');
+            let html = '<span class="breadcrumb-item" onclick="navigateToRoot()">根目录</span>';
+            
+            data.currentPath.forEach((pathItem, index) => {
+                html += '<span class="breadcrumb-separator">/</span>';
+                const isLast = index === data.currentPath.length - 1;
+                html += `<span class="breadcrumb-item ${isLast ? 'current' : ''}" 
+                             onclick="navigateToPath(${index})">${pathItem.name}</span>`;
+            });
+            
+            breadcrumb.innerHTML = html;
+        }
+
+        // 渲染文件列表
+        function renderFileList() {
+            const fileList = document.getElementById('fileList');
+            const uploadArea = document.getElementById('uploadArea');
+            
+            if (data.currentTab === 'files') {
+                uploadArea.style.display = 'block';
+                const { files, folders } = getCurrentFiles();
+                
+                if (files.length === 0 && folders.length === 0) {
+                    fileList.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">📭</div>
+                            <div class="empty-text">还没有文件，拖拽或点击上传吧</div>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                let html = '';
+                
+                // 渲染文件夹
+                folders.forEach(folder => {
+                    html += `
+                        <div class="file-item" oncontextmenu="showFileContextMenu(event, 'folder', '${folder.id}')">
+                            <span class="file-icon">📁</span>
+                            <div class="file-info">
+                                <div class="file-name">${folder.name}</div>
+                                <div class="file-meta">
+                                    <span>文件夹</span>
+                                    <span>${formatDate(folder.createdAt)}</span>
+                                </div>
+                            </div>
+                            <div class="file-actions">
+                                <button class="file-action-btn move" onclick="startMove('folder', '${folder.id}')" title="移动">📦</button>
+                                <button class="file-action-btn rename" onclick="startRename('folder', '${folder.id}')" title="重命名">✏️</button>
+                                <button class="file-action-btn delete" onclick="deleteItemDirect('folder', '${folder.id}')" title="删除">🗑️</button>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                // 渲染文件
+                files.forEach(file => {
+                    const icon = getFileIcon(file.name);
+                    html += `
+                        <div class="file-item" ondblclick="openFile('${file.id}')" oncontextmenu="showFileContextMenu(event, 'file', '${file.id}')">
+                            <span class="file-icon">${icon}</span>
+                            <div class="file-info">
+                                <div class="file-name">${file.name}</div>
+                                <div class="file-meta">
+                                    <span>${formatSize(file.size)}</span>
+                                    <span>${formatDate(file.createdAt)}</span>
+                                </div>
+                            </div>
+                            <div class="file-actions">
+                                <button class="file-action-btn move" onclick="startMove('file', '${file.id}')" title="移动">📦</button>
+                                <button class="file-action-btn rename" onclick="startRename('file', '${file.id}')" title="重命名">✏️</button>
+                                <button class="file-action-btn delete" onclick="deleteItemDirect('file', '${file.id}')" title="删除">🗑️</button>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                fileList.innerHTML = html;
+            } else {
+                uploadArea.style.display = 'none';
+                const links = getCurrentLinks();
+                
+                if (links.length === 0) {
+                    fileList.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">🔗</div>
+                            <div class="empty-text">还没有网址，点击"添加内容"添加吧</div>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                fileList.innerHTML = links.map(link => `
+                    <div class="file-item" oncontextmenu="showFileContextMenu(event, 'link', '${link.id}')">
+                        <span class="file-icon">🔗</span>
+                        <div class="file-info">
+                            <div class="file-name">${link.name || link.url}</div>
+                            <div class="file-meta">
+                                <span>${link.url}</span>
+                                <span>${formatDate(link.createdAt)}</span>
+                            </div>
+                        </div>
+                        <div class="file-actions">
+                            <button class="file-action-btn rename" onclick="startRename('link', '${link.id}')" title="重命名">✏️</button>
+                            <button class="file-action-btn delete" onclick="deleteItemDirect('link', '${link.id}')" title="删除">🗑️</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // 更新计数
+        function updateCounts() {
+            const kb = getCurrentKnowledge();
+            if (!kb) return;
+            
+            const { files, folders } = getCurrentFiles();
+            const links = getCurrentLinks();
+            
+            document.getElementById('fileCount').textContent = files.length + folders.length;
+            document.getElementById('linkCount').textContent = links.length;
+        }
+
+        // 更新当前知识库名称
+        function updateCurrentKnowledgeName() {
+            const kb = getCurrentKnowledge();
+            document.getElementById('currentKnowledge').textContent = kb ? kb.name : '';
+        }
+
+        // 切换知识库
+        function switchKnowledge(id) {
+            data.currentKnowledgeId = id;
+            data.currentPath = [];
+            saveData();
+            render();
+        }
+
+        // 切换标签页
+        function switchTab(tab) {
+            data.currentTab = tab;
+            document.querySelectorAll('.tab').forEach(t => {
+                t.classList.toggle('active', t.dataset.tab === tab);
+            });
+            render();
+        }
+
+        // 导航到根目录
+        function navigateToRoot() {
+            data.currentPath = [];
+            render();
+        }
+
+        // 导航到指定路径
+        function navigateToPath(index) {
+            data.currentPath = data.currentPath.slice(0, index + 1);
+            render();
+        }
+
+        // 进入文件夹
+        function enterFolder(folderId, folderName) {
+            data.currentPath.push({ id: folderId, name: folderName });
+            render();
+        }
+
+        // 打开文件
+        function openFile(fileId) {
+            const kb = getCurrentKnowledge();
+            const file = kb.files.find(f => f.id === fileId);
+            if (file && file.type === 'folder') {
+                enterFolder(fileId, file.name);
+            } else if (file && file.url) {
+                window.open(file.url, '_blank');
+            }
+        }
+
+        // 显示添加知识库弹窗
+        function showAddKnowledgeModal() {
+            document.getElementById('knowledgeNameInput').value = '';
+            showModal('addKnowledgeModal');
+        }
+
+        // 添加知识库
+        function addKnowledge() {
+            const name = document.getElementById('knowledgeNameInput').value.trim();
+            if (!name) {
+                showToast('请输入知识库名称', 'error');
+                return;
+            }
+            
+            const id = 'kb_' + Date.now();
+            data.knowledgeBases.push({
+                id,
+                name,
+                files: [],
+                links: [],
+                folders: []
+            });
+            
+            data.currentKnowledgeId = id;
+            data.currentPath = [];
+            saveData();
+            closeModal('addKnowledgeModal');
+            render();
+            showToast('知识库创建成功', 'success');
+        }
+
+        // 显示添加内容菜单
+        function showAddFileMenu(e) {
+            // 阻止事件冒泡，避免全局点击事件立刻关闭菜单
+            if (e) {
+                e.stopPropagation();
+            } else if (window.event) {
+                window.event.stopPropagation();
+            }
+            
+            const menu = document.getElementById('addFileMenu');
+            const btn = document.querySelector('.btn-add-file');
+            const rect = btn.getBoundingClientRect();
+            
+            // 先临时显示以获取尺寸
+            menu.style.visibility = 'hidden';
+            menu.style.top = '0px';
+            menu.style.left = '0px';
+            menu.classList.add('show');
+            
+            // 计算位置：菜单右边缘对齐按钮右边缘
+            const menuWidth = menu.offsetWidth || 180;
+            const menuHeight = menu.offsetHeight || 180;
+            let left = rect.right - menuWidth;
+            let top = rect.bottom + 8;
+            
+            // 防止菜单超出屏幕
+            if (left < 10) left = 10;
+            if (top + menuHeight > window.innerHeight - 10) {
+                top = rect.top - menuHeight - 8; // 显示在按钮上方
+            }
+            
+            menu.style.top = top + 'px';
+            menu.style.left = left + 'px';
+            menu.style.visibility = 'visible';
+            
+            // 延迟添加点击关闭事件
+            setTimeout(() => {
+                document.addEventListener('click', hideAddFileMenu, { once: true });
+            }, 200);
+        }
+
+        // 隐藏添加内容菜单
+        function hideAddFileMenu() {
+            const menu = document.getElementById('addFileMenu');
+            menu.classList.remove('show');
+            menu.style.top = '-9999px';
+            menu.style.left = '-9999px';
+        }
+
+        // 触发文件上传
+        function triggerFileUpload() {
+            hideAddFileMenu();
+            document.getElementById('fileInput').click();
+        }
+
+        // 触发文件夹上传
+        function triggerFolderUpload() {
+            hideAddFileMenu();
+            document.getElementById('folderInput').click();
+        }
+
+        // 处理文件选择
+        function handleFileSelect(event) {
+            const files = event.target.files;
+            addFiles(files);
+            event.target.value = '';
+        }
+
+        // 处理文件夹选择
+        function handleFolderSelect(event) {
+            const files = event.target.files;
+            addFiles(files);
+            event.target.value = '';
+        }
+
+        // 添加文件
+        function addFiles(fileList) {
+            const kb = getCurrentKnowledge();
+            if (!kb) return;
+            
+            const parentFolder = data.currentPath.length > 0 
+                ? data.currentPath[data.currentPath.length - 1].id 
+                : null;
+            
+            for (const file of fileList) {
+                const fileData = {
+                    id: 'file_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                    name: file.name,
+                    size: file.size,
+                    type: file.type || 'application/octet-stream',
+                    createdAt: new Date().toISOString(),
+                    parentFolder: parentFolder
+                };
+                
+                kb.files.push(fileData);
+            }
+            
+            saveData();
+            render();
+            showToast(`已添加 ${fileList.length} 个文件`, 'success');
+        }
+
+        // 显示添加网址弹窗
+        function showAddLinkModal() {
+            hideAddFileMenu();
+            document.getElementById('linkUrlInput').value = '';
+            document.getElementById('linkNameInput').value = '';
+            showModal('addLinkModal');
+        }
+
+        // 添加网址
+        function addLink() {
+            let url = document.getElementById('linkUrlInput').value.trim();
+            const name = document.getElementById('linkNameInput').value.trim();
+            
+            if (!url) {
+                showToast('请输入网址', 'error');
+                return;
+            }
+            
+            // 自动补全 http 前缀
+            if (!/^https?:\/\//i.test(url)) {
+                url = 'https://' + url;
+            }
+            
+            const kb = getCurrentKnowledge();
+            if (!kb) return;
+            
+            // 确保 links 数组存在
+            if (!kb.links) kb.links = [];
+            
+            kb.links.push({
+                id: 'link_' + Date.now(),
+                url,
+                name: name || url,
+                createdAt: new Date().toISOString()
+            });
+            
+            saveData();
+            closeModal('addLinkModal');
+            
+            // 自动切换到网址标签页，让用户能看到刚添加的网址
+            switchTab('links');
+            
+            showToast('网址添加成功', 'success');
+        }
+
+        // 显示新建文件夹弹窗
+        function showAddFolderModal() {
+            hideAddFileMenu();
+            document.getElementById('folderNameInput').value = '';
+            showModal('addFolderModal');
+        }
+
+        // 新建文件夹
+        function addFolder() {
+            const name = document.getElementById('folderNameInput').value.trim();
+            if (!name) {
+                showToast('请输入文件夹名称', 'error');
+                return;
+            }
+            
+            const kb = getCurrentKnowledge();
+            if (!kb) {
+                showToast('请先选择一个知识库', 'error');
+                return;
+            }
+            
+            // 确保 folders 数组存在
+            if (!kb.folders) kb.folders = [];
+            
+            const parentFolder = data.currentPath.length > 0 
+                ? data.currentPath[data.currentPath.length - 1].id 
+                : null;
+            
+            const newFolder = {
+                id: 'folder_' + Date.now(),
+                name,
+                createdAt: new Date().toISOString(),
+                parentFolder: parentFolder
+            };
+            
+            kb.folders.push(newFolder);
+            
+            saveData();
+            closeModal('addFolderModal');
+            render();
+            showToast('文件夹创建成功', 'success');
+        }
+
+        // 文件操作相关变量
+        let currentOperation = {
+            type: null, // 'file', 'folder', 'link'
+            id: null,
+            sourceKbId: null, // 来源知识库
+            targetKbId: null, // 目标知识库
+            targetFolderId: null
+        };
+
+        // 显示文件右键菜单
+        function showFileContextMenu(event, type, id) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            currentOperation.type = type;
+            currentOperation.id = id;
+            
+            const menu = document.getElementById('fileContextMenu');
+            menu.style.top = event.clientY + 'px';
+            menu.style.left = event.clientX + 'px';
+            menu.classList.add('show');
+            
+            setTimeout(() => {
+                document.addEventListener('click', hideFileContextMenu, { once: true });
+            }, 0);
+        }
+
+        // 隐藏文件右键菜单
+        function hideFileContextMenu() {
+            document.getElementById('fileContextMenu').classList.remove('show');
+        }
+
+        // 开始重命名
+        function startRename(type, id) {
+            currentOperation.type = type;
+            currentOperation.id = id;
+            currentOperation.sourceKbId = data.currentKnowledgeId;
+            
+            const kb = getCurrentKnowledge();
+            let item;
+            
+            if (type === 'file') {
+                item = kb.files.find(f => f.id === id);
+            } else if (type === 'folder') {
+                item = kb.folders.find(f => f.id === id);
+            } else if (type === 'link') {
+                item = kb.links.find(l => l.id === id);
+            }
+            
+            if (item) {
+                document.getElementById('renameInput').value = item.name || '';
+                showModal('renameModal');
+            }
+        }
+
+        // 重命名
+        function renameItem() {
+            const newName = document.getElementById('renameInput').value.trim();
+            if (!newName) {
+                showToast('请输入名称', 'error');
+                return;
+            }
+            
+            const kbId = currentOperation.sourceKbId || data.currentKnowledgeId;
+            const kb = data.knowledgeBases.find(k => k.id === kbId);
+            if (!kb) { showToast('知识库不存在', 'error'); return; }
+            
+            const { type, id } = currentOperation;
+            
+            if (type === 'file') {
+                const file = kb.files.find(f => f.id === id);
+                if (file) file.name = newName;
+            } else if (type === 'folder') {
+                const folder = kb.folders.find(f => f.id === id);
+                if (folder) folder.name = newName;
+            } else if (type === 'link') {
+                const link = kb.links.find(l => l.id === id);
+                if (link) link.name = newName;
+            }
+            
+            saveData();
+            closeModal('renameModal');
+            render();
+            showToast('重命名成功', 'success');
+        }
+
+        // 直接删除（从按钮）
+        function deleteItemDirect(type, id) {
+            currentOperation.type = type;
+            currentOperation.id = id;
+            currentOperation.sourceKbId = data.currentKnowledgeId;
+            deleteItem();
+        }
+
+        // 删除
+        function deleteItem() {
+            if (!confirm('确定要删除吗？')) return;
+            
+            const kbId = currentOperation.sourceKbId || data.currentKnowledgeId;
+            const kb = data.knowledgeBases.find(k => k.id === kbId);
+            if (!kb) { showToast('知识库不存在', 'error'); return; }
+            
+            const { type, id } = currentOperation;
+            
+            if (type === 'file') {
+                kb.files = kb.files.filter(f => f.id !== id);
+            } else if (type === 'folder') {
+                kb.folders = kb.folders.filter(f => f.id !== id);
+                // 同时删除文件夹内的所有文件
+                kb.files = kb.files.filter(f => f.parentFolder !== id);
+                kb.folders = kb.folders.filter(f => f.parentFolder !== id);
+            } else if (type === 'link') {
+                kb.links = kb.links.filter(l => l.id !== id);
+            }
+            
+            saveData();
+            hideFileContextMenu();
+            render();
+            showToast('删除成功', 'success');
+        }
+
+        // 开始移动
+        function startMove(type, id) {
+            currentOperation.type = type;
+            currentOperation.id = id;
+            currentOperation.sourceKbId = data.currentKnowledgeId; // 记录来源知识库
+            currentOperation.targetKbId = data.currentKnowledgeId; // 默认目标也是当前知识库
+            currentOperation.targetFolderId = null; // 重置目标文件夹
+            showMoveModal();
+        }
+
+        // 显示移动弹窗
+        function showMoveModal() {
+            const kb = getCurrentKnowledge();
+            if (!kb) {
+                showToast('请先选择一个知识库', 'error');
+                return;
+            }
+            
+            const folderList = document.getElementById('folderSelectList');
+            
+            // 构建选择列表：所有知识库 + 每个知识库下的文件夹
+            let html = '<div style="font-size:12px;color:#999;padding:8px 14px 6px;">选择目标位置：</div>';
+            
+            data.knowledgeBases.forEach(function(kbItem) {
+                const folders = kbItem.folders || [];
+                // 知识库根目录作为一个可选目标
+                html += '<div class="folder-item' + (isTarget(data.currentKnowledgeId, null, kbItem.id) ? ' selected' : '') + '" data-target-kb="' + kbItem.id + '" data-target-folder="__root__" title="移动到 ' + kbItem.name + ' 的根目录">';
+                html += '<span>📚</span> ' + escapeHtml(kbItem.name) + '（根目录）';
+                html += '</div>';
+                
+                // 该知识库下的文件夹
+                folders.forEach(function(folder) {
+                    const isSelected = isTarget(data.currentKnowledgeId, folder.id, kbItem.id);
+                    html += '<div class="folder-item folder-child' + (isSelected ? ' selected' : '') + '" data-target-kb="' + kbItem.id + '" data-target-folder="' + folder.id + '" title="移动到 ' + folder.name + '">';
+                    html += '<span>📁</span> ' + escapeHtml(folder.name);
+                    html += '</div>';
+                });
+            });
+            
+            folderList.innerHTML = html;
+            
+            // 事件委托绑定点击
+            folderList.onclick = function(e) {
+                const item = e.target.closest('.folder-item');
+                if (!item) return;
+                const kbId = item.getAttribute('data-target-kb');
+                const folderId = item.getAttribute('data-target-folder');
+                currentOperation.targetKbId = kbId;
+                currentOperation.targetFolderId = (folderId === '__root__') ? null : folderId;
+                folderList.querySelectorAll('.folder-item').forEach(function(el) {
+                    el.classList.remove('selected');
+                });
+                item.classList.add('selected');
+            };
+            
+            hideFileContextMenu();
+            showModal('moveFileModal');
+        }
+
+        // 判断某个目标是否当前选中
+        function isTarget(kbId, folderId, listKbId) {
+            return currentOperation.targetKbId === listKbId && currentOperation.targetFolderId === folderId;
+        }
+
+        // 选择目标文件夹（保留兼容，但不再使用 inline onclick）
+        function selectTargetFolder(folderId, evt) {
+            currentOperation.targetFolderId = folderId;
+            document.querySelectorAll('#folderSelectList .folder-item').forEach(function(item) {
+                item.classList.remove('selected');
+            });
+            if (evt && evt.currentTarget) {
+                evt.currentTarget.classList.add('selected');
+            }
+        }
+
+        // HTML 转义（防止特殊字符破坏属性）
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        // 移动文件
+        function moveFile() {
+            const srcKbId = currentOperation.sourceKbId;
+            const dstKbId = currentOperation.targetKbId;
+            const dstFolderId = currentOperation.targetFolderId;
+            const { type, id } = currentOperation;
+            
+            const srcKb = data.knowledgeBases.find(k => k.id === srcKbId);
+            const dstKb = data.knowledgeBases.find(k => k.id === dstKbId);
+            
+            if (!srcKb || !dstKb) {
+                showToast('知识库不存在', 'error');
+                return;
+            }
+            
+            // 确保目标知识库有 folders 数组
+            if (!dstKb.folders) dstKb.folders = [];
+            
+            if (type === 'file') {
+                const file = srcKb.files.find(f => f.id === id);
+                if (!file) { showToast('文件不存在', 'error'); return; }
+                
+                // 如果是从其他知识库移过来，先从来源移除
+                if (srcKbId !== dstKbId) {
+                    srcKb.files = srcKb.files.filter(f => f.id !== id);
+                    file.parentFolder = dstFolderId;
+                    dstKb.files.push(file);
+                } else {
+                    file.parentFolder = dstFolderId;
+                }
+            } else if (type === 'folder') {
+                const folder = srcKb.folders.find(f => f.id === id);
+                if (!folder) { showToast('文件夹不存在', 'error'); return; }
+                
+                if (dstKbId === srcKbId && dstFolderId === id) {
+                    showToast('不能把文件夹移动到自己里面', 'error');
+                    return;
+                }
+                
+                // 跨知识库移动文件夹时，要同时移动它下面的文件
+                if (srcKbId !== dstKbId) {
+                    // 把该文件夹的所有内容也移到目标知识库
+                    const srcFolderFiles = srcKb.files.filter(f => f.parentFolder === id);
+                    srcFolderFiles.forEach(f => { f.parentFolder = id; dstKb.files.push(f); });
+                    srcKb.files = srcKb.files.filter(f => f.parentFolder !== id);
+                    
+                    srcKb.folders = srcKb.folders.filter(f => f.id !== id);
+                    folder.parentFolder = dstFolderId;
+                    dstKb.folders.push(folder);
+                } else {
+                    folder.parentFolder = dstFolderId;
+                }
+            } else if (type === 'link') {
+                const link = srcKb.links.find(l => l.id === id);
+                if (!link) { showToast('网址不存在', 'error'); return; }
+                if (srcKbId !== dstKbId) {
+                    srcKb.links = srcKb.links.filter(l => l.id !== id);
+                    dstKb.links.push(link);
+                }
+            }
+            
+            saveData();
+            closeModal('moveFileModal');
+            
+            // 如果移动到了其他知识库，切换到对应知识库查看
+            if (dstKbId !== data.currentKnowledgeId) {
+                data.currentKnowledgeId = dstKbId;
+                data.currentPath = [];
+            }
+            
+            render();
+            showToast('移动成功', 'success');
+        }
+
+        // 搜索处理
+        function handleSearch() {
+            const keyword = document.getElementById('searchInput').value.trim().toLowerCase();
+            const kb = getCurrentKnowledge();
+            if (!kb) return;
+            
+            if (!keyword) {
+                render();
+                return;
+            }
+            
+            // 简单搜索实现
+            const { files, folders } = getCurrentFiles();
+            const links = getCurrentLinks();
+            
+            const filteredFiles = files.filter(f => f.name.toLowerCase().includes(keyword));
+            const filteredFolders = folders.filter(f => f.name.toLowerCase().includes(keyword));
+            const filteredLinks = links.filter(l => (l.name || l.url).toLowerCase().includes(keyword));
+            
+            // 临时替换渲染数据
+            const originalFiles = kb.files;
+            const originalFolders = kb.folders;
+            const originalLinks = kb.links;
+            
+            kb.files = filteredFiles;
+            kb.folders = filteredFolders;
+            kb.links = filteredLinks;
+            
+            renderFileList();
+            updateCounts();
+            
+            kb.files = originalFiles;
+            kb.folders = originalFolders;
+            kb.links = originalLinks;
+        }
+
+        // 弹窗控制
+        function showModal(id) {
+            document.getElementById(id).classList.add('show');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('show');
+        }
+
+        // Toast 提示
+        function showToast(message, type = '') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast ' + type;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2000);
+        }
+
+        // 工具函数
+        function getFileIcon(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            const icons = {
+                pdf: '📕',
+                doc: '📘', docx: '📘',
+                xls: '📗', xlsx: '📗',
+                ppt: '📙', pptx: '📙',
+                txt: '📄',
+                md: '📝',
+                jpg: '🖼️', jpeg: '🖼️', png: '🖼️', gif: '🖼️',
+                zip: '🗜️', rar: '🗜️',
+                mp3: '🎵', wav: '🎵',
+                mp4: '🎬', avi: '🎬', mov: '🎬'
+            };
+            return icons[ext] || '📄';
+        }
+
+        function formatSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            return `${month}-${day} ${hours}:${minutes}`;
+        }
+
+        // 拖拽上传
+        const uploadArea = document.getElementById('uploadArea');
+        
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                addFiles(files);
+            }
+        });
+        
+        uploadArea.addEventListener('click', () => {
+            document.getElementById('fileInput').click();
+        });
+
+        // 点击空白处关闭菜单
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.context-menu')) {
+                document.querySelectorAll('.context-menu').forEach(menu => {
+                    menu.classList.remove('show');
+                });
+            }
+        });
+
+        // 初始化
+        loadData();
+    </script>
+</body>
+</html>
