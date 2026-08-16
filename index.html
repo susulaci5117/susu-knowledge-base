@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>素素的知识库</title>
     <!-- Supabase 客户端 -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+    <script src="https://cdn.jsdelivr.net/npm/@sbClient/sbClient-js@2">
     </script>
     <style>
         * {
@@ -869,7 +869,7 @@
 const SUPABASE_URL = 'https://aqjxuljatkeeygaixayl.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFxanh1bGphdGtlZXlnYWl4YXlsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4Njc1MjQsImV4cCI6MjEwMjQ0MzUyNH0.mWwRH3Ybb1f4f8iRIahM9YX4FV1uJPPUPdH1tvG0s8A';
 
-const supabase = window.supabase
+const sbClient = window.supabase
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
 
@@ -885,7 +885,7 @@ let state = {
 
 // ---------- 启动 ----------
 async function init() {
-  if (!supabase) {
+  if (!sbClient) {
     showToast('Supabase 未加载，请检查网络', 'error');
     return;
   }
@@ -900,20 +900,20 @@ async function init() {
 // ---------- 云端加载 ----------
 async function loadFromCloud() {
   // 加载知识库
-  const { data: kbs, error: errKb } = await supabase
+  const { data: kbs, error: errKb } = await sbClient
     .from('knowledge_bases')
     .select('*')
     .order('created_at', { ascending: true });
   if (errKb) throw errKb;
 
   // 加载文件夹
-  const { data: flds, error: errF } = await supabase
+  const { data: flds, error: errF } = await sbClient
     .from('folders')
     .select('*');
   if (errF) throw errF;
 
   // 加载内容
-  const { data: its, error: errI } = await supabase
+  const { data: its, error: errI } = await sbClient
     .from('items')
     .select('*');
   if (errI) throw errI;
@@ -924,7 +924,7 @@ async function loadFromCloud() {
 
   // 没有知识库时，创建一个默认的
   if (state.knowledgeBases.length === 0) {
-    const { data: newKb, error: err } = await supabase
+    const { data: newKb, error: err } = await sbClient
       .from('knowledge_bases')
       .insert({ name: '默认知识库' })
       .select()
@@ -1136,7 +1136,7 @@ async function addKnowledge() {
   const name = document.getElementById('knowledgeNameInput').value.trim();
   if (!name) { showToast('请输入知识库名称', 'error'); return; }
 
-  const { data, error } = await supabase
+  const { data, error } = await sbClient
     .from('knowledge_bases')
     .insert({ name })
     .select()
@@ -1212,7 +1212,7 @@ async function addFiles(fileList) {
   for (const file of files) {
     // 1. 上传到存储桶
     const storagePath = 'files/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const { error: upErr } = await supabase.storage
+    const { error: upErr } = await sbClient.storage
       .from('kb-files')
       .upload(storagePath, file, {
         contentType: file.type || 'application/octet-stream'
@@ -1220,11 +1220,11 @@ async function addFiles(fileList) {
     if (upErr) { fail++; console.error('上传失败', file.name, upErr.message); continue; }
 
     // 得到公开 URL
-    const { data: urlData } = supabase.storage.from('kb-files').getPublicUrl(storagePath);
+    const { data: urlData } = sbClient.storage.from('kb-files').getPublicUrl(storagePath);
     const publicUrl = urlData.publicUrl;
 
     // 2. 记录到 items 表
-    const { error: insErr } = await supabase
+    const { error: insErr } = await sbClient
       .from('items')
       .insert({
         kb_id: state.currentKbId,
@@ -1259,7 +1259,7 @@ async function addLink() {
   if (!url) { showToast('请输入网址', 'error'); return; }
   if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
 
-  const { error } = await supabase
+  const { error } = await sbClient
     .from('items')
     .insert({
       kb_id: state.currentKbId,
@@ -1287,7 +1287,7 @@ async function addFolder() {
   const name = document.getElementById('folderNameInput').value.trim();
   if (!name) { showToast('请输入文件夹名称', 'error'); return; }
 
-  const { data, error } = await supabase
+  const { data, error } = await sbClient
     .from('folders')
     .insert({
       kb_id: state.currentKbId,
@@ -1353,7 +1353,7 @@ async function renameItem() {
 
   const { type, id } = currentOperation;
   const table = type === 'folder' ? 'folders' : 'items';
-  const { error } = await supabase
+  const { error } = await sbClient
     .from(table)
     .update({ name: newName })
     .eq('id', id);
@@ -1387,11 +1387,11 @@ async function deleteItem() {
       try {
         const storagePath = item.url.split('/kb-files/')[1];
         if (storagePath) {
-          await supabase.storage.from('kb-files').remove([storagePath]);
+          await sbClient.storage.from('kb-files').remove([storagePath]);
         }
       } catch (e) { console.error(e); }
     }
-    await supabase.from('items').delete().eq('id', id);
+    await sbClient.from('items').delete().eq('id', id);
   }
 
   hideFileContextMenu();
@@ -1415,9 +1415,9 @@ async function deleteFolderRecursive(folderId) {
   const allFolderIds = [folderId].concat(subFolders);
 
   // 删除这些文件夹下的所有 items
-  await supabase.from('items').delete().in('folder_id', allFolderIds);
+  await sbClient.from('items').delete().in('folder_id', allFolderIds);
   // 删除文件夹
-  await supabase.from('folders').delete().in('id', allFolderIds);
+  await sbClient.from('folders').delete().in('id', allFolderIds);
 }
 
 // ---------- 移动 ----------
@@ -1479,7 +1479,7 @@ async function moveFile() {
       showToast('不能把文件夹移动到自己里面', 'error');
       return;
     }
-    const { error } = await supabase
+    const { error } = await sbClient
       .from('folders')
       .update({ kb_id: targetKbId, parent_id: targetFolderId })
       .eq('id', id);
@@ -1487,10 +1487,10 @@ async function moveFile() {
 
     // 如果跨知识库，把该文件夹下的 items 也更新 kb
     if (targetKbId !== state.currentKbId) {
-      await supabase.from('items').update({ kb_id: targetKbId }).eq('folder_id', id);
+      await sbClient.from('items').update({ kb_id: targetKbId }).eq('folder_id', id);
     }
   } else {
-    const { error } = await supabase
+    const { error } = await sbClient
       .from('items')
       .update({ kb_id: targetKbId, folder_id: targetFolderId })
       .eq('id', id);
@@ -1588,14 +1588,14 @@ function formatDate(dateStr) {
 
 // ---------- 重载云端 ----------
 async function reloadItems() {
-  const { data, error } = await supabase.from('items').select('*');
+  const { data, error } = await sbClient.from('items').select('*');
   if (!error && data) state.items = new Map(data.map(it => [it.id, it]));
 }
 async function reloadAll() {
   const [kbs, flds, its] = await Promise.all([
-    supabase.from('knowledge_bases').select('*').order('created_at', { ascending: true }),
-    supabase.from('folders').select('*'),
-    supabase.from('items').select('*')
+    sbClient.from('knowledge_bases').select('*').order('created_at', { ascending: true }),
+    sbClient.from('folders').select('*'),
+    sbClient.from('items').select('*')
   ]);
   if (!kbs.error && kbs.data) state.knowledgeBases = kbs.data;
   if (!flds.error && flds.data) state.folders = new Map(flds.data.map(f => [f.id, f]));
