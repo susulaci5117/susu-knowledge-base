@@ -1033,8 +1033,9 @@ function renderFileList() {
     let html = '';
     folders.forEach(folder => {
       html += '<div class="file-item" oncontextmenu="showFileContextMenu(event,\'folder\',\'' + folder.id + '\')">' +
+        '<div class="file-info" style="cursor:pointer;flex:1" onclick="enterFolder(\'' + folder.id + '\',\'' + folder.name.replace(/'/g, "\\'").replace(/\\/g, "\\\\") + '\')">' +
         '<span class="file-icon">📁</span>' +
-        '<div class="file-info"><div class="file-name">' + escapeHtml(folder.name) + '</div>' +
+        '<div class="file-name" style="display:inline;margin-left:10px">' + escapeHtml(folder.name) + '</div>' +
         '<div class="file-meta"><span>文件夹</span><span>' + formatDate(folder.created_at) + '</span></div></div>' +
         '<div class="file-actions">' +
         '<button class="file-action-btn move" onclick="startMove(\'folder\',\'' + folder.id + '\')" title="移动">📦</button>' +
